@@ -162,8 +162,8 @@ cch.customize()
 
 @app.route('/')
 def index():
-    with open("index.html", "r", encoding="utf-8") as f:
-        return f.read()
+    return render_template("index.html")  # ✅ Flask의 기본 사용 방식
+
 
 @app.route('/route', methods=['POST'])
 def get_route():
