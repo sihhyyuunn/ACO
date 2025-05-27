@@ -162,7 +162,9 @@ cch.customize()
 
 @app.route('/')
 def index():
-    return render_template("index.html")
+    with open("index.html", "r", encoding="utf-8") as f:
+        return f.read()
+
 
 @app.route('/route', methods=['POST'])
 def get_route():
