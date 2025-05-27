@@ -165,7 +165,6 @@ def index():
     with open("index.html", "r", encoding="utf-8") as f:
         return f.read()
 
-
 @app.route('/route', methods=['POST'])
 def get_route():
     data = request.get_json()
