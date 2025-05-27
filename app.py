@@ -4,14 +4,14 @@ import networkx as nx
 import numpy as np
 import random
 import os
+import pickle
 
 app = Flask(__name__)
 
 # =========================
-# Load Graph from Excel (경로 수정됨!)
+# 데이터 로딩 및 그래프 생성
 # =========================
-def load_graph_from_excel():
-    path = "input.xlsx"  # ✅ 이제 같은 폴더에서 직접 로드
+def load_graph_from_excel(path="input.xlsx"):
     df = pd.read_excel(path)
     df = df[['콘존ID', '교통량', '콘존길이', '시작노드ID', '종료노드ID']].dropna()
     df['시작노드ID'] = df['시작노드ID'].astype(str)
@@ -37,7 +37,30 @@ def load_graph_from_excel():
     return G, node_index, reverse_index
 
 # =========================
-# ACO + CCH 정의는 그대로 유지
+# 전처리 저장/불러오기
+# =========================
+def save_preprocessed(graph, order, shortcuts):
+    with open("graph.pkl", "wb") as f: pickle.dump(graph, f)
+    with open("order.pkl", "wb") as f: pickle.dump(order, f)
+    with open("shortcuts.pkl", "wb") as f: pickle.dump(shortcuts, f)
+
+def load_preprocessed():
+    try:
+        with open("graph.pkl", "rb") as f: graph = pickle.load(f)
+        with open("order.pkl", "rb") as f: order = pickle.load(f)
+        with open("shortcuts.pkl", "rb") as f: shortcuts = pickle.load(f)
+        return graph, order, shortcuts
+    except:
+        return None, None, None
+
+def is_input_updated():
+    try:
+        return os.path.getmtime("input.xlsx") > os.path.getmtime("graph.pkl")
+    except:
+        return True
+
+# =========================
+# ACO 및 CCH 클래스 정의
 # =========================
 class ACO_CCH:
     def __init__(self, graph, num_ants=5, alpha=1, beta=2, evaporation=0.5, iterations=5):
@@ -150,20 +173,32 @@ class CCH:
         return nx.bidirectional_dijkstra(self.customized_graph, source, target, weight='weight')[1]
 
 # =========================
-# 초기화 및 서버 구성
+# 앱 초기화
 # =========================
-G, node_index, reverse_index = load_graph_from_excel()
-aco = ACO_CCH(G)
-best_order = aco.optimize_order()
-cch = CCH(G)
-cch.set_order(best_order)
-cch.contract_nodes()
-cch.customize()
+if is_input_updated():
+    G, node_index, reverse_index = load_graph_from_excel()
+    aco = ACO_CCH(G)
+    order = aco.optimize_order()
+    cch = CCH(G)
+    cch.set_order(order)
+    cch.contract_nodes()
+    cch.customize()
+    save_preprocessed(G, order, cch.shortcuts)
+else:
+    G, order, shortcuts = load_preprocessed()
+    node_index = {str(n): n for n in G.nodes}
+    reverse_index = {v: k for k, v in node_index.items()}
+    cch = CCH(G)
+    cch.set_order(order)
+    cch.shortcuts = shortcuts
+    cch.customize()
 
+# =========================
+# 라우팅 설정
+# =========================
 @app.route('/')
 def index():
-    return render_template("index.html")  # ✅ Flask의 기본 사용 방식
-
+    return render_template("index.html")
 
 @app.route('/route', methods=['POST'])
 def get_route():
@@ -183,4 +218,5 @@ def get_route():
         return jsonify({"error": f"서버 오류: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
