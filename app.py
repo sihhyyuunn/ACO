@@ -7,8 +7,11 @@ import os
 
 app = Flask(__name__)
 
+# =========================
+# Load Graph from Excel (경로 수정됨!)
+# =========================
 def load_graph_from_excel():
-    path = os.path.join("data", "input.xlsx")
+    path = "input.xlsx"  # ✅ 이제 같은 폴더에서 직접 로드
     df = pd.read_excel(path)
     df = df[['콘존ID', '교통량', '콘존길이', '시작노드ID', '종료노드ID']].dropna()
     df['시작노드ID'] = df['시작노드ID'].astype(str)
@@ -33,6 +36,9 @@ def load_graph_from_excel():
 
     return G, node_index, reverse_index
 
+# =========================
+# ACO + CCH 정의는 그대로 유지
+# =========================
 class ACO_CCH:
     def __init__(self, graph, num_ants=5, alpha=1, beta=2, evaporation=0.5, iterations=5):
         self.graph = graph
@@ -143,6 +149,9 @@ class CCH:
     def query(self, source, target):
         return nx.bidirectional_dijkstra(self.customized_graph, source, target, weight='weight')[1]
 
+# =========================
+# 초기화 및 서버 구성
+# =========================
 G, node_index, reverse_index = load_graph_from_excel()
 aco = ACO_CCH(G)
 best_order = aco.optimize_order()
@@ -162,15 +171,15 @@ def get_route():
     end_id = data.get("end")
 
     if start_id not in node_index or end_id not in node_index:
-        return jsonify({"error": "Invalid node ID."}), 400
+        return jsonify({"error": "입력한 콘존ID가 그래프에 없습니다."}), 400
 
     try:
         src = node_index[start_id]
         dst = node_index[end_id]
         path_length = cch.query(src, dst)
         return jsonify({"length": path_length, "start": start_id, "end": end_id})
-    except:
-        return jsonify({"error": "No path found."}), 500
+    except Exception as e:
+        return jsonify({"error": f"서버 오류: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
