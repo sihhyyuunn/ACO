@@ -8,9 +8,6 @@ import pickle
 
 app = Flask(__name__)
 
-# =========================
-# 데이터 로딩 및 그래프 생성
-# =========================
 def load_graph_from_excel(path="input.xlsx"):
     df = pd.read_excel(path)
     df = df[['콘존ID', '교통량', '콘존길이', '시작노드ID', '종료노드ID']].dropna()
@@ -36,9 +33,6 @@ def load_graph_from_excel(path="input.xlsx"):
 
     return G, node_index, reverse_index
 
-# =========================
-# 전처리 저장/불러오기
-# =========================
 def save_preprocessed(graph, order, shortcuts):
     with open("graph.pkl", "wb") as f: pickle.dump(graph, f)
     with open("order.pkl", "wb") as f: pickle.dump(order, f)
@@ -59,9 +53,6 @@ def is_input_updated():
     except:
         return True
 
-# =========================
-# ACO 및 CCH 클래스 정의
-# =========================
 class ACO_CCH:
     def __init__(self, graph, num_ants=5, alpha=1, beta=2, evaporation=0.5, iterations=5):
         self.graph = graph
@@ -170,11 +161,9 @@ class CCH:
             self.customized_graph.add_edge(u, v, weight=w)
 
     def query(self, source, target):
-        return nx.bidirectional_dijkstra(self.customized_graph, source, target, weight='weight')[1]
+        return nx.bidirectional_dijkstra(self.customized_graph, source, target, weight='weight')
 
-# =========================
-# 앱 초기화
-# =========================
+# 초기화
 if is_input_updated():
     G, node_index, reverse_index = load_graph_from_excel()
     aco = ACO_CCH(G)
@@ -193,9 +182,6 @@ else:
     cch.shortcuts = shortcuts
     cch.customize()
 
-# =========================
-# 라우팅 설정
-# =========================
 @app.route('/')
 def index():
     return render_template("index.html")
@@ -212,8 +198,15 @@ def get_route():
     try:
         src = node_index[start_id]
         dst = node_index[end_id]
-        path_length = cch.query(src, dst)
-        return jsonify({"length": path_length, "start": start_id, "end": end_id})
+        path_nodes, path_length = cch.query(src, dst)
+        path_ids = [reverse_index[n] for n in path_nodes]
+
+        return jsonify({
+            "start": start_id,
+            "end": end_id,
+            "length": path_length,
+            "path": path_ids
+        })
     except Exception as e:
         return jsonify({"error": f"서버 오류: {str(e)}"}), 500
 
