@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 import pandas as pd
 import networkx as nx
 import numpy as np
@@ -7,6 +8,7 @@ import os
 import pickle
 
 app = Flask(__name__)
+CORS(app)
 
 def load_graph_from_excel(path="input.xlsx"):
     df = pd.read_excel(path)
@@ -213,4 +215,3 @@ def get_route():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
-
