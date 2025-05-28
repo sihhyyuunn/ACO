@@ -31,14 +31,15 @@
             const start = document.getElementById("startID").value;
             const end = document.getElementById("endID").value;
 
-            const res = await fetch("/route", {
+            const res = await fetch("https://port-0-sihhyyuunn-lyduaj2i0cb0dd74.sel5.cloudtype.app/route", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ start, end })
             });
-            const data = await res.json();
 
+            const data = await res.json();
             const output = document.getElementById("output");
+
             if (data.error) {
                 output.textContent = "❌ " + data.error;
                 return;
@@ -47,8 +48,12 @@
             output.textContent = `🚗 ${data.start} → ${data.end} : ${data.length.toFixed(2)} 거리`;
 
             if (polyline) map.removeLayer(polyline);
+            if (data.path) {
+                const coords = data.path.map(id => [35.0, 129.0]); // 예시 좌표
+                polyline = L.polyline(coords, { color: 'blue' }).addTo(map);
+                map.fitBounds(polyline.getBounds());
+            }
         }
     </script>
 </body>
 </html>
-
